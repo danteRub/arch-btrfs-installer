@@ -16,6 +16,38 @@ ensure_dep lsblk
 ensure_dep mkfs.btrfs
 ensure_dep btrfs
 ensure_dep snapper
+ensure_dep parted
+
+# --- Funciones para crear particiones ---
+crear_particion() {
+    local disco="$1"
+    local tipo_particion="$2"
+    local tamaño="$3"
+    
+    echo "🔧 Creando tabla de particiones $tipo_particion en $disco..."
+    
+    if [[ "$tipo_particion" == "GPT" ]]; then
+        sudo parted "$disco" mklabel gpt
+        if [[ "$tamaño" == "100%" ]]; then
+            sudo parted "$disco" mkpart primary btrfs 1MiB 100%
+        else
+            sudo parted "$disco" mkpart primary btrfs 1MiB "${tamaño}GB"
+        fi
+    else
+        sudo parted "$disco" mklabel msdos
+        if [[ "$tamaño" == "100%" ]]; then
+            sudo parted "$disco" mkpart primary btrfs 1MiB 100%
+        else
+            sudo parted "$disco" mkpart primary btrfs 1MiB "${tamaño}GB"
+        fi
+    fi
+    
+    # Asegurar que los cambios se escriban
+    sudo partprobe "$disco"
+    sleep 2
+    
+    echo "✅ Partición creada en $disco"
+}
 
 # --- Selección de disco ---
 discos=$(lsblk -dno NAME,SIZE | awk '{print "/dev/"$1" ("$2")"}')
@@ -33,8 +65,32 @@ disco_dev=$(echo "$disco" | awk '{print $1}')
 particiones=$(lsblk -lno NAME,SIZE,TYPE | awk -v d="$disco_dev" '$3=="part" && $1 ~ substr(d,6) {print "/dev/"$1" ("$2")"}')
 
 if [[ -z "$particiones" ]]; then
-    echo "❌ El disco $disco_dev no tiene particiones."
-    exit 1
+    echo "⚠️  El disco $disco_dev no tiene particiones."
+    if gum confirm "¿Quieres crear una partición en $disco_dev?"; then
+        echo "Selecciona el tipo de tabla de particiones:"
+        tipo_particion=$(echo -e "GPT\nMBR" | gum choose)
+        
+        echo "Selecciona el tamaño de la partición:"
+        tamaño=$(echo -e "100%\n50GB\n100GB\n200GB\n500GB" | gum choose)
+        
+        if gum confirm "⚠️  Esto BORRARÁ todos los datos en $disco_dev. ¿Continuar?"; then
+            crear_particion "$disco_dev" "$tipo_particion" "$tamaño"
+            
+            # Buscar la nueva partición creada
+            sleep 3
+            particiones=$(lsblk -lno NAME,SIZE,TYPE | awk -v d="$disco_dev" '$3=="part" && $1 ~ substr(d,6) {print "/dev/"$1" ("$2")"}')
+            if [[ -z "$particiones" ]]; then
+                echo "❌ Error: No se pudo crear la partición."
+                exit 1
+            fi
+        else
+            echo "❎ Cancelado."
+            exit 1
+        fi
+    else
+        echo "❎ Cancelado."
+        exit 1
+    fi
 fi
 
 echo "Selecciona la partición del disco $disco_dev para instalar:"
