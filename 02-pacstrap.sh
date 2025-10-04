@@ -96,19 +96,39 @@ if gum confirm "¿Crear un usuario administrador además de root?"; then
 fi
 
 echo "Aplicando configuración base dentro del chroot..."
-$SUDO arch-chroot /mnt bash -eu <<CHROOT
-set -euo pipefail
+$SUDO arch-chroot /mnt env -i \
+  timezone_val="$timezone_val" \
+  locales_val="$locales_val" \
+  lang_val="$lang_val" \
+  hostname_val="$hostname_val" \
+  create_user="$create_user" \
+  user_name="${user_name:-}" \
+  bash -e <<'CHROOT'
+set -e
+
+# Defaults por si alguna variable viene vacía
+: "${timezone_val:=Europe/Madrid}"
+: "${locales_val:=es_ES.UTF-8,en_US.UTF-8}"
+: "${lang_val:=es_ES.UTF-8}"
+: "${hostname_val:=archbox}"
+: "${create_user:=no}"
+: "${user_name:=}"
+
+# Zona horaria y reloj
 ln -sf "/usr/share/zoneinfo/$timezone_val" /etc/localtime
 hwclock --systohc
 
+# Locales
 cp /etc/locale.gen /etc/locale.gen.bak
-IFS=',' read -r -a _locs <<< "$locales_val"
-for loc in "\${_locs[@]}"; do
-  sed -i "s/^#\\s*\\($loc\\)\$/\\1/" /etc/locale.gen || true
-done
+# Descomentar cada locale pedido (separados por comas)
+while IFS= read -r loc; do
+  [ -z "$loc" ] && continue
+  sed -i -E "s|^#\s*(${loc})$|\1|" /etc/locale.gen || true
+done < <(echo "$locales_val" | tr ',' '\n')
 locale-gen
 echo "LANG=$lang_val" > /etc/locale.conf
 
+# Hostname y hosts
 echo "$hostname_val" > /etc/hostname
 cat >/etc/hosts <<EOF
 127.0.0.1   localhost
@@ -116,25 +136,26 @@ cat >/etc/hosts <<EOF
 127.0.1.1   $hostname_val.localdomain $hostname_val
 EOF
 
+# Contraseña de root
 echo "Establece la contraseña de root:"
 passwd
 
-if [[ "$create_user" == "yes" ]]; then
+# Usuario administrador opcional
+if [ "$create_user" = "yes" ] && [ -n "$user_name" ]; then
   useradd -m -G wheel -s /bin/bash "$user_name"
   echo "Establece la contraseña para $user_name:"
   passwd "$user_name"
   sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 fi
 
+# Habilitar servicios si existen
 if command -v systemctl >/dev/null 2>&1; then
   if command -v NetworkManager >/dev/null 2>&1; then
     systemctl enable NetworkManager
   fi
   if command -v snapper >/dev/null 2>&1; then
     snapper -c root create-config / || true
-    if [ -d /home ]; then
-      snapper -c home create-config /home || true
-    fi
+    [ -d /home ] && snapper -c home create-config /home || true
   fi
 fi
 CHROOT
@@ -143,9 +164,10 @@ echo
 echo "Configuración base aplicada."
 echo
 echo "Siguiente paso: instalar y configurar el cargador de arranque."
-echo "Si tienes partición EFI montada en /mnt/boot, usa systemd-boot:"
+echo "Si tienes partición EFI montada en /mnt/boot, puedes usar systemd-boot:"
 echo "  arch-chroot /mnt bootctl install"
-echo "o si prefieres GRUB (ya instalado si lo elegiste):"
+echo
+echo "O si prefieres GRUB (si lo seleccionaste en los paquetes):"
 echo "  arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch"
 echo "  arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg"
 echo
