@@ -68,10 +68,10 @@ if [[ -z "$particiones" ]]; then
     echo "⚠️  El disco $disco_dev no tiene particiones."
     if gum confirm "¿Quieres crear una partición en $disco_dev?"; then
         echo "Selecciona el tipo de tabla de particiones:"
-        tipo_particion=$(echo -e "GPT\nMBR" | gum choose)
+        tipo_particion=$(printf "GPT\nMBR" | gum choose)
         
         echo "Selecciona el tamaño de la partición:"
-        tamaño=$(echo -e "100%\n50GB\n100GB\n200GB\n500GB" | gum choose)
+        tamaño=$(printf "100%%\n50GB\n100GB\n200GB\n500GB" | gum choose)
         
         if gum confirm "⚠️  Esto BORRARÁ todos los datos en $disco_dev. ¿Continuar?"; then
             crear_particion "$disco_dev" "$tipo_particion" "$tamaño"
