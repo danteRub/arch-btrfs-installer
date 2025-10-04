@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 02-pacstrap.sh
 # Prepara el sistema base dentro de /mnt y aplica configuración mínima.
-# Requisitos: /mnt y subvolúmenes montados; conexión a Internet.
+# Ahora incluye inicialización automática del keyring (claves PGP Arch Linux).
 
 set -euo pipefail
 
@@ -10,12 +10,26 @@ if [[ $EUID -ne 0 ]]; then SUDO="sudo"; fi
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "Falta '$1'"; exit 1; }; }
 
-# Dependencias del live
-for c in gum pacstrap genfstab arch-chroot lsblk lscpu timedatectl; do
+# Dependencias mínimas del entorno live
+for c in gum pacstrap genfstab arch-chroot lsblk lscpu timedatectl pacman-key gpg; do
   need "$c"
 done
 
-# Comprobaciones previas
+# --- Actualización y reparación del keyring ---
+echo "Actualizando y configurando el keyring de Arch Linux..."
+$SUDO pacman -Sy --noconfirm archlinux-keyring || true
+$SUDO pacman-key --init || true
+$SUDO pacman-key --populate archlinux || true
+
+# Intentar refrescar claves desde servidor más confiable
+if ! $SUDO pacman-key --refresh-keys; then
+  echo "No se pudo contactar con los servidores de claves por defecto. Usando keyserver alternativo..."
+  $SUDO gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys \
+    $(pacman-key --list-keys | grep '^pub' | awk '{print $2}' | cut -d'/' -f2) || true
+fi
+echo "Keyring actualizado correctamente."
+
+# --- Comprobaciones previas ---
 [[ -d /mnt ]] || { echo "/mnt no existe"; exit 1; }
 mountpoint -q /mnt || { echo "/mnt no está montado"; exit 1; }
 
@@ -32,18 +46,14 @@ echo "Selecciona kernel:"
 kernel="$(printf "%s\n" "linux" "linux-lts" | gum choose)"
 
 echo "Paquetes base adicionales (mínimos ya incluidos: btrfs-progs, $kernel, linux-firmware):"
-# Lista recomendada
 recommended=("base" "linux-firmware" "btrfs-progs" "vi" "vim" "nano" "networkmanager" "sudo" "grub" "efibootmgr" "snapper")
-# Menú múltiple
 selected=$(printf "%s\n" "${recommended[@]}" | gum choose --no-limit)
-# Montamos lista final
+
 pkgs=("$kernel" "linux-firmware" "btrfs-progs")
 [[ -n "$ucode_pkg" ]] && pkgs+=("$ucode_pkg")
-# Añade seleccionados evitando duplicados
 for p in $selected; do
   [[ " ${pkgs[*]} " == *" $p "* ]] || pkgs+=("$p")
 done
-# Garantiza "base"
 if [[ " ${pkgs[*]} " != *" base "* ]]; then pkgs=("base" "${pkgs[@]}"); fi
 
 echo "Se instalarán los siguientes paquetes:"
@@ -59,12 +69,10 @@ fi
 echo "Generando fstab..."
 $SUDO genfstab -U /mnt >> /mnt/etc/fstab
 
-# Parámetros interactivos de sistema
 echo "Introduce el hostname del sistema:"
 hostname_val="$(gum input --placeholder 'archbox')"
 [[ -z "$hostname_val" ]] && hostname_val="archbox"
 
-# Locale y zona horaria por defecto (puedes cambiarlos en las preguntas)
 tz_default="Europe/Madrid"
 echo "Zona horaria (por defecto $tz_default):"
 timezone_val="$(gum input --value "$tz_default")"
@@ -79,7 +87,6 @@ echo "LANG por defecto ($lang_default):"
 lang_val="$(gum input --value "$lang_default")"
 [[ -z "$lang_val" ]] && lang_val="$lang_default"
 
-# Usuario opcional
 create_user="no"
 if gum confirm "¿Crear un usuario administrador además de root?"; then
   create_user="yes"
@@ -91,13 +98,9 @@ fi
 echo "Aplicando configuración base dentro del chroot..."
 $SUDO arch-chroot /mnt bash -eu <<CHROOT
 set -euo pipefail
-
-# Zona horaria y reloj
 ln -sf "/usr/share/zoneinfo/$timezone_val" /etc/localtime
 hwclock --systohc
 
-# Locales
-# Activar líneas en /etc/locale.gen
 cp /etc/locale.gen /etc/locale.gen.bak
 IFS=',' read -r -a _locs <<< "$locales_val"
 for loc in "\${_locs[@]}"; do
@@ -106,7 +109,6 @@ done
 locale-gen
 echo "LANG=$lang_val" > /etc/locale.conf
 
-# Hostname y hosts
 echo "$hostname_val" > /etc/hostname
 cat >/etc/hosts <<EOF
 127.0.0.1   localhost
@@ -114,27 +116,21 @@ cat >/etc/hosts <<EOF
 127.0.1.1   $hostname_val.localdomain $hostname_val
 EOF
 
-# Root password
 echo "Establece la contraseña de root:"
 passwd
 
-# Usuario administrador opcional
 if [[ "$create_user" == "yes" ]]; then
   useradd -m -G wheel -s /bin/bash "$user_name"
   echo "Establece la contraseña para $user_name:"
   passwd "$user_name"
-  # Habilitar sudo para wheel
   sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 fi
 
-# Habilitar servicios útiles si están instalados
 if command -v systemctl >/dev/null 2>&1; then
   if command -v NetworkManager >/dev/null 2>&1; then
     systemctl enable NetworkManager
   fi
-  # Snapper timers básicos si snapper existe
   if command -v snapper >/dev/null 2>&1; then
-    # Crear configuraciones para / y /home si existen
     snapper -c root create-config / || true
     if [ -d /home ]; then
       snapper -c home create-config /home || true
@@ -143,12 +139,11 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 CHROOT
 
+echo
 echo "Configuración base aplicada."
-
-# Recordatorio de bootloader
 echo
 echo "Siguiente paso: instalar y configurar el cargador de arranque."
-echo "Si tienes partición EFI montada en /mnt/boot, puedes usar systemd-boot:"
+echo "Si tienes partición EFI montada en /mnt/boot, usa systemd-boot:"
 echo "  arch-chroot /mnt bootctl install"
 echo "o si prefieres GRUB (ya instalado si lo elegiste):"
 echo "  arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch"
