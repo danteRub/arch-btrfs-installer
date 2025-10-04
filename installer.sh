@@ -1,152 +1,172 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Instalación limpia en partición Btrfs con Snapper
-# Arch Linux + gum
+# Instalación limpia en partición Btrfs con subvolúmenes + Snapper opcional
+# Arch Linux + gum, multi-disco, single-partición
 
-# --- Dependencias ---
-ensure_dep() {
-    if ! command -v "$1" &>/dev/null; then
-        echo "⚠️  Dependencia '$1' no encontrada. Instalando..."
-        sudo pacman -Sy --noconfirm "$1"
-    fi
-}
-ensure_dep gum
-ensure_dep lsblk
-ensure_dep mkfs.btrfs
-ensure_dep btrfs
-ensure_dep snapper
-ensure_dep parted
-
-# --- Funciones para crear particiones ---
-crear_particion() {
-    local disco="$1"
-    local tipo_particion="$2"
-    local tamaño="$3"
-    
-    echo "🔧 Creando tabla de particiones $tipo_particion en $disco..."
-    
-    if [[ "$tipo_particion" == "GPT" ]]; then
-        sudo parted "$disco" mklabel gpt
-        if [[ "$tamaño" == "all" ]]; then
-            sudo parted "$disco" mkpart primary btrfs 1MiB 100%
-        else
-            sudo parted "$disco" mkpart primary btrfs 1MiB "${tamaño}GB"
-        fi
-    else
-        sudo parted "$disco" mklabel msdos
-        if [[ "$tamaño" == "all" ]]; then
-            sudo parted "$disco" mkpart primary btrfs 1MiB 100%
-        else
-            sudo parted "$disco" mkpart primary btrfs 1MiB "${tamaño}GB"
-        fi
-    fi
-    
-    # Asegurar que los cambios se escriban
-    sudo partprobe "$disco"
-    sleep 2
-    
-    echo "✅ Partición creada en $disco"
-}
-
-# --- Selección de disco ---
-discos=$(lsblk -dno NAME,SIZE | awk '{print "/dev/"$1" ("$2")"}')
-
-if [[ -z "$discos" ]]; then
-    echo "❌ No se detectaron discos."
-    exit 1
+### --- helpers / deps ---
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+  SUDO="sudo"
 fi
 
-echo "Selecciona el disco donde quieres instalar:"
-disco=$(echo "$discos" | gum choose)
-disco_dev=$(echo "$disco" | awk '{print $1}')
+pkg_for_cmd() {
+  case "$1" in
+    gum) echo "gum" ;;
+    lsblk) echo "util-linux" ;;
+    parted|partprobe) echo "parted" ;;
+    mkfs.btrfs|btrfs) echo "btrfs-progs" ;;
+    snapper) echo "snapper" ;;
+    *) echo "" ;;
+  esac
+}
 
-# --- Selección de partición ---
-particiones=$(lsblk -lno NAME,SIZE,TYPE | awk -v d="$disco_dev" '$3=="part" && $1 ~ substr(d,6) {print "/dev/"$1" ("$2")"}')
+ensure_dep() {
+  local cmd="$1"
+  if ! command -v "$cmd" &>/dev/null; then
+    local pkg; pkg="$(pkg_for_cmd "$cmd")"
+    if [[ -z "$pkg" ]]; then
+      echo "Error: no se puede determinar el paquete para '$cmd'." >&2
+      exit 1
+    fi
+    echo "Instalando dependencia '$cmd' (paquete: $pkg)..."
+    $SUDO pacman -Sy --noconfirm --needed "$pkg"
+  fi
+}
+
+for c in gum lsblk parted mkfs.btrfs btrfs snapper partprobe; do
+  ensure_dep "$c"
+done
+
+cleanup() {
+  set +e
+  $SUDO umount -R /mnt &>/dev/null || true
+}
+trap cleanup EXIT
+
+### --- selección de disco ---
+discos="$(
+  lsblk -dprno NAME,SIZE,MODEL |
+  awk '{print $1" ("$2") "substr($0, index($0,$3))}' |
+  sed 's/  */ /g'
+)"
+
+[[ -z "$discos" ]] && { echo "No se detectaron discos."; exit 1; }
+
+echo "Selecciona el disco:"
+disco_line="$(echo "$discos" | gum choose)"
+disco_dev="$(awk '{print $1}' <<<"$disco_line")"
+disco_base="$(basename "$disco_dev")"
+
+### --- selección o creación de partición ---
+particiones="$(
+  lsblk -prno NAME,SIZE,TYPE,PKNAME |
+  awk -v pk="$disco_base" '$3=="part" && $4==pk {print $1" ("$2")"}'
+)"
 
 if [[ -z "$particiones" ]]; then
-    echo "⚠️  El disco $disco_dev no tiene particiones."
-    if gum confirm "¿Quieres crear una partición en $disco_dev?"; then
-        echo "Selecciona el tipo de tabla de particiones:"
-        tipo_particion=$(gum choose "GPT" "MBR")
-        
-        echo "Selecciona el tamaño de la partición:"
-        tamaño=$(gum choose "Todo el disco" "50GB" "100GB" "200GB" "500GB")
-        
-        if gum confirm "⚠️  Esto BORRARÁ todos los datos en $disco_dev. ¿Continuar?"; then
-            crear_particion "$disco_dev" "$tipo_particion" "$tamaño"
-            
-            # Buscar la nueva partición creada
-            sleep 3
-            particiones=$(lsblk -lno NAME,SIZE,TYPE | awk -v d="$disco_dev" '$3=="part" && $1 ~ substr(d,6) {print "/dev/"$1" ("$2")"}')
-            if [[ -z "$particiones" ]]; then
-                echo "❌ Error: No se pudo crear la partición."
-                exit 1
-            fi
-        else
-            echo "❎ Cancelado."
-            exit 1
-        fi
+  echo "El disco $disco_dev no tiene particiones."
+  if gum confirm "¿Quieres crear una nueva partición en $disco_dev? Esto borrará todo el disco."; then
+    echo "Selecciona el tipo de tabla de particiones:"
+    tipo_tabla="$(gum choose "GPT" "MBR")"
+
+    echo "Selecciona el tamaño de la partición:"
+    tam_choice="$(gum choose "all" "50GB" "100GB" "200GB" "500GB")"
+    tam_norm="$tam_choice"
+
+    echo "Creando tabla $tipo_tabla y partición en $disco_dev..."
+    if [[ "$tipo_tabla" == "GPT" ]]; then
+      $SUDO parted -s "$disco_dev" mklabel gpt
     else
-        echo "❎ Cancelado."
-        exit 1
+      $SUDO parted -s "$disco_dev" mklabel msdos
     fi
+
+    if [[ "$tam_norm" == "all" ]]; then
+      $SUDO parted -s "$disco_dev" mkpart primary btrfs 1MiB 100%
+    else
+      $SUDO parted -s "$disco_dev" mkpart primary btrfs 1MiB "$tam_norm"
+    fi
+
+    $SUDO partprobe "$disco_dev"
+    sleep 2
+
+    particiones="$(
+      lsblk -prno NAME,SIZE,TYPE,PKNAME |
+      awk -v pk="$disco_base" '$3=="part" && $4==pk {print $1" ("$2")"}'
+    )"
+    [[ -z "$particiones" ]] && { echo "Error: no se pudo crear la partición."; exit 1; }
+  else
+    echo "Cancelado por el usuario."
+    exit 0
+  fi
 fi
 
-echo "Selecciona la partición del disco $disco_dev para instalar:"
-part=$(echo "$particiones" | gum choose)
-part_dev=$(echo "$part" | awk '{print $1}')
+echo "Selecciona la partición del disco $disco_dev donde instalar:"
+part_line="$(echo "$particiones" | gum choose)"
+part_dev="$(awk '{print $1}' <<<"$part_line")"
 
-# --- Plan de acción ---
+# No seguir si está montada
+if lsblk -prno MOUNTPOINT "$part_dev" | grep -q "/" ; then
+  echo "La partición $part_dev está montada. Desmóntala antes de continuar."
+  exit 1
+fi
+
+### --- plan ---
 echo
 echo "=== PLAN DE INSTALACIÓN LIMPIA ==="
-echo "Disco: $disco_dev"
-echo "Partición: $part_dev"
+echo "Disco:      $disco_dev"
+echo "Partición:  $part_dev"
 echo
-echo "1. Formatear $part_dev como Btrfs (mkfs.btrfs -f -L ArchRoot)."
-echo "2. Montar en /mnt."
-echo "3. Crear subvolúmenes:"
-echo "   @, @home, @log, @pkg, @snapshots"
-echo "4. Re-montar con subvolúmenes en:"
-echo "   /mnt            -> @"
-echo "   /mnt/home       -> @home"
-echo "   /mnt/var/log    -> @log"
-echo "   /mnt/var/cache/pacman/pkg -> @pkg"
-echo "   /mnt/.snapshots -> @snapshots"
-echo "5. Configurar Snapper en / y /home."
+echo "1) Formatear $part_dev como Btrfs (mkfs.btrfs -f -L ArchRoot)"
+echo "2) Montar en /mnt"
+echo "3) Crear subvolúmenes: @, @home, @log, @pkg, @snapshots"
+echo "4) Re-montar con opciones:"
+echo "   /mnt                       -> @"
+echo "   /mnt/home                  -> @home"
+echo "   /mnt/var/log               -> @log"
+echo "   /mnt/var/cache/pacman/pkg  -> @pkg"
+echo "   /mnt/.snapshots            -> @snapshots"
+echo "5) (Opcional) Configurar Snapper dentro del chroot"
 echo
 
-# --- Confirmación ---
-if gum confirm "⚠️  Esto BORRARÁ todo el contenido de $part_dev. ¿Continuar?"; then
-    echo "⏳ Ejecutando instalación limpia en $part_dev..."
+if gum confirm "Esto borrará todo el contenido de $part_dev. ¿Continuar y ejecutar?"; then
+  echo "Formateando $part_dev..."
+  $SUDO mkfs.btrfs -f -L ArchRoot "$part_dev"
 
-    # Formatear limpio
-    sudo mkfs.btrfs -f -L ArchRoot "$part_dev"
+  echo "Montando y creando subvolúmenes..."
+  $SUDO mount "$part_dev" /mnt
+  for sv in @ @home @log @pkg @snapshots; do
+    $SUDO btrfs subvolume create "/mnt/$sv"
+  done
 
-    # Montar raíz temporal
-    sudo mount "$part_dev" /mnt
+  echo "Re-montando con opciones..."
+  $SUDO umount /mnt
+  $SUDO mount -o subvol=@,compress=zstd,noatime "$part_dev" /mnt
+  $SUDO mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots}
+  $SUDO mount -o subvol=@home,compress=zstd,noatime "$part_dev" /mnt/home
+  $SUDO mount -o subvol=@log,compress=zstd,noatime "$part_dev" /mnt/var/log
+  $SUDO mount -o subvol=@pkg,compress=zstd,noatime "$part_dev" /mnt/var/cache/pacman/pkg
+  $SUDO mount -o subvol=@snapshots,compress=zstd,noatime "$part_dev" /mnt/.snapshots
 
-    # Crear subvolúmenes
-    for sv in @ @home @log @pkg @snapshots; do
-        sudo btrfs subvolume create /mnt/$sv
-    done
+  echo "Recuerda generar fstab tras el pacstrap con:"
+  echo "  genfstab -U /mnt >> /mnt/etc/fstab"
+  echo
 
-    # Re-montar con opciones
-    sudo umount /mnt
-    sudo mount -o subvol=@,compress=zstd,noatime "$part_dev" /mnt
-    sudo mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots}
-    sudo mount -o subvol=@home,compress=zstd,noatime "$part_dev" /mnt/home
-    sudo mount -o subvol=@log,compress=zstd,noatime "$part_dev" /mnt/var/log
-    sudo mount -o subvol=@pkg,compress=zstd,noatime "$part_dev" /mnt/var/cache/pacman/pkg
-    sudo mount -o subvol=@snapshots,compress=zstd,noatime "$part_dev" /mnt/.snapshots
+  if [[ -x /mnt/usr/bin/snapper ]]; then
+    echo "Configurando Snapper dentro del chroot..."
+    $SUDO arch-chroot /mnt bash -eu -c '
+      snapper -c root create-config / || true
+      snapper -c home create-config /home || true
+    '
+  else
+    echo "Snapper aún no está instalado dentro del sistema."
+    echo "Tras el pacstrap, ejecuta dentro del chroot:"
+    echo "  pacman -S --needed snapper"
+    echo "  snapper -c root create-config /"
+    echo "  snapper -c home create-config /home"
+  fi
 
-    # Configuración de Snapper
-    sudo arch-chroot /mnt bash -c "
-      snapper -c root create-config /
-      snapper -c home create-config /home
-    "
-
-    echo "✅ Instalación completada en $part_dev (Btrfs + Snapper)"
+  echo "Instalación completada: partición preparada con Btrfs y subvolúmenes."
 else
-    echo "❎ Cancelado. No se hicieron cambios."
+  echo "Cancelado. No se hicieron cambios."
 fi
