@@ -28,14 +28,14 @@ crear_particion() {
     
     if [[ "$tipo_particion" == "GPT" ]]; then
         sudo parted "$disco" mklabel gpt
-        if [[ "$tamaño" == "100%" ]]; then
+        if [[ "$tamaño" == "all" ]]; then
             sudo parted "$disco" mkpart primary btrfs 1MiB 100%
         else
             sudo parted "$disco" mkpart primary btrfs 1MiB "${tamaño}GB"
         fi
     else
         sudo parted "$disco" mklabel msdos
-        if [[ "$tamaño" == "100%" ]]; then
+        if [[ "$tamaño" == "all" ]]; then
             sudo parted "$disco" mkpart primary btrfs 1MiB 100%
         else
             sudo parted "$disco" mkpart primary btrfs 1MiB "${tamaño}GB"
@@ -71,7 +71,7 @@ if [[ -z "$particiones" ]]; then
         tipo_particion=$(gum choose "GPT" "MBR")
         
         echo "Selecciona el tamaño de la partición:"
-        tamaño=$(gum choose "100%" "50GB" "100GB" "200GB" "500GB")
+        tamaño=$(gum choose "Todo el disco" "50GB" "100GB" "200GB" "500GB")
         
         if gum confirm "⚠️  Esto BORRARÁ todos los datos en $disco_dev. ¿Continuar?"; then
             crear_particion "$disco_dev" "$tipo_particion" "$tamaño"
