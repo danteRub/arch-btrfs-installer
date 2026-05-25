@@ -16,6 +16,8 @@ def test_cli_renders_markdown_plan(capsys) -> None:
 
     assert exit_code == 0
     assert "# Arch Btrfs AI Advisor" in captured.out
+    assert "## Status" in captured.out
+    assert "`needs_review`" in captured.out
     assert "UEFI" in captured.out
     assert "amd-ucode" in captured.out
     assert "./01-installer.sh" in captured.out
@@ -30,6 +32,8 @@ def test_cli_can_emit_json_plan(capsys) -> None:
 
     assert exit_code == 0
     assert "UEFI" in payload["summary"]
+    assert payload["status"] == "needs_review"
+    assert payload["status_reasons"]
     assert any(step["command"]["risk"] == "critical" for step in payload["steps"] if step["command"])
 
 
@@ -53,7 +57,9 @@ def test_cli_writes_markdown_output_file(tmp_path, capsys) -> None:
     assert exit_code == 0
     assert captured.out == ""
     assert output.exists()
-    assert "# Arch Btrfs AI Advisor" in output.read_text(encoding="utf-8")
+    contents = output.read_text(encoding="utf-8")
+    assert "# Arch Btrfs AI Advisor" in contents
+    assert "## Status" in contents
 
 
 def test_cli_writes_json_output_file(tmp_path, capsys) -> None:
@@ -67,6 +73,7 @@ def test_cli_writes_json_output_file(tmp_path, capsys) -> None:
     assert exit_code == 0
     assert captured.out == ""
     assert "UEFI" in payload["summary"]
+    assert payload["status"] == "needs_review"
 
 
 def test_cli_strict_returns_2_when_warnings_exist(capsys) -> None:
