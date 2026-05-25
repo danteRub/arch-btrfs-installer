@@ -154,12 +154,51 @@ def test_cli_doctor_mode_can_write_output_file(tmp_path, capsys) -> None:
     assert "Windows/NTFS markers detected: `yes`" in contents
 
 
+def test_cli_bundle_mode_writes_all_expected_files(tmp_path, capsys) -> None:
+    bundle_dir = tmp_path / "bundle"
+
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--bundle", str(bundle_dir)])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert f"Bundle written to {bundle_dir}" in captured.out
+    expected_files = {
+        "system_report.json",
+        "plan.md",
+        "plan.json",
+        "doctor.md",
+        "explanation.md",
+        "summary.txt",
+    }
+    assert expected_files == {path.name for path in bundle_dir.iterdir()}
+    assert "# Arch Btrfs AI Advisor" in (bundle_dir / "plan.md").read_text(encoding="utf-8")
+    assert "# Advisor doctor report" in (bundle_dir / "doctor.md").read_text(encoding="utf-8")
+    assert "# Plan explanation" in (bundle_dir / "explanation.md").read_text(encoding="utf-8")
+    assert "Status: needs_review" in (bundle_dir / "summary.txt").read_text(encoding="utf-8")
+    assert json.loads((bundle_dir / "plan.json").read_text(encoding="utf-8"))["status"] == "needs_review"
+
+
+def test_cli_bundle_mode_rejects_output(tmp_path) -> None:
+    with pytest.raises(SystemExit, match="--bundle cannot be used with --output"):
+        main([
+            str(FIXTURES / "uefi_nvme_amd.json"),
+            "--bundle",
+            str(tmp_path / "bundle"),
+            "--output",
+            str(tmp_path / "ignored.md"),
+        ])
+
+
 def test_cli_modes_are_mutually_exclusive() -> None:
-    with pytest.raises(SystemExit, match="--json, --explain and --doctor are mutually exclusive"):
+    with pytest.raises(SystemExit, match="--json, --explain, --doctor and --bundle are mutually exclusive"):
         main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--explain"])
 
-    with pytest.raises(SystemExit, match="--json, --explain and --doctor are mutually exclusive"):
+    with pytest.raises(SystemExit, match="--json, --explain, --doctor and --bundle are mutually exclusive"):
         main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--doctor"])
+
+    with pytest.raises(SystemExit, match="--json, --explain, --doctor and --bundle are mutually exclusive"):
+        main([str(FIXTURES / "uefi_nvme_amd.json"), "--doctor", "--bundle", "out"])
 
 
 def test_cli_llm_provider_requires_explain() -> None:
