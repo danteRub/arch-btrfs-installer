@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at_utc": "2026-05-25T19:30:00Z",
+  "safety": {
+    "mode": "read_only",
+    "writes_performed": ["diagnostics/system_report.json"],
+    "destructive_operations": false
+  },
+  "system": {
+    "boot_mode": "UEFI",
+    "cpu_vendor": "AuthenticAMD",
+    "network_link_up_detected": "yes"
+  },
+  "commands": {
+    "lsblk_json": "{\"blockdevices\":[{\"name\":\"nvme0n1\",\"path\":\"/dev/nvme0n1\",\"type\":\"disk\",\"size\":\"1T\",\"model\":\"Fast NVMe\",\"tran\":\"nvme\",\"rm\":false,\"children\":[{\"name\":\"nvme0n1p1\",\"type\":\"part\",\"fstype\":\"vfat\",\"parttype\":\"ef00\",\"partlabel\":\"EFI\"},{\"name\":\"nvme0n1p2\",\"type\":\"part\",\"fstype\":\"btrfs\",\"partlabel\":\"Linux_BTRFS\"}]}]}",
+    "lscpu_json": "{}",
+    "lspci": "",
+    "ip_link": "",
+    "timedatectl": "",
+    "findmnt": "",
+    "efibootmgr": ""
+  },
+  "ai_advisor_notes": {
+    "intended_use": "Generate an installation plan and classify command risk before the user executes anything."
+  }
+}
