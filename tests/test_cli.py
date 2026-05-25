@@ -39,3 +39,57 @@ def test_cli_dualboot_fixture_includes_windows_warning(capsys) -> None:
     assert exit_code == 0
     assert "Windows" in captured.out
     assert "Do not wipe" in captured.out
+
+
+def test_cli_writes_markdown_output_file(tmp_path, capsys) -> None:
+    output = tmp_path / "plans" / "plan.md"
+
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--output", str(output)])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out == ""
+    assert output.exists()
+    assert "# Arch Btrfs AI Advisor" in output.read_text(encoding="utf-8")
+
+
+def test_cli_writes_json_output_file(tmp_path, capsys) -> None:
+    output = tmp_path / "plan.json"
+
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--output", str(output)])
+
+    captured = capsys.readouterr()
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert captured.out == ""
+    assert "UEFI" in payload["summary"]
+
+
+def test_cli_strict_returns_2_when_warnings_exist(capsys) -> None:
+    exit_code = main([str(FIXTURES / "uefi_windows_dualboot.json"), "--strict"])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "Windows" in captured.out
+
+
+def test_cli_fail_on_critical_returns_3_when_critical_commands_exist(capsys) -> None:
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--fail-on-critical"])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 3
+    assert "critical" in captured.out
+
+
+def test_cli_fail_on_critical_takes_precedence_over_strict(capsys) -> None:
+    exit_code = main([
+        str(FIXTURES / "uefi_windows_dualboot.json"),
+        "--strict",
+        "--fail-on-critical",
+    ])
+
+    assert exit_code == 3
