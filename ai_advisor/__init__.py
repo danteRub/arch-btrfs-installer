@@ -9,6 +9,7 @@ from .llm_explainer import (
     validate_llm_explanation,
 )
 from .models import CommandRisk, InstallCommand, InstallPlan, SystemReport
+from .openai_compatible import OpenAICompatibleClient, OpenAICompatibleClientError
 from .planner import create_initial_plan
 from .risk_classifier import classify_command
 
@@ -19,6 +20,8 @@ __all__ = [
     "InstallCommand",
     "InstallPlan",
     "LLMExplanationResult",
+    "OpenAICompatibleClient",
+    "OpenAICompatibleClientError",
     "SystemReport",
     "build_llm_explanation_prompt",
     "classify_command",
