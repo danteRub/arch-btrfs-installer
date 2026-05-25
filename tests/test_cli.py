@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from ai_advisor.__main__ import main
 
 
@@ -93,3 +95,31 @@ def test_cli_fail_on_critical_takes_precedence_over_strict(capsys) -> None:
     ])
 
     assert exit_code == 3
+
+
+def test_cli_explain_mode_renders_explanation(capsys) -> None:
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--explain"])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "# Plan explanation" in captured.out
+    assert "Human review checklist" in captured.out
+    assert "./01-installer.sh" in captured.out
+
+
+def test_cli_explain_mode_can_write_output_file(tmp_path, capsys) -> None:
+    output = tmp_path / "explanation.md"
+
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--explain", "--output", str(output)])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out == ""
+    assert "# Plan explanation" in output.read_text(encoding="utf-8")
+
+
+def test_cli_json_and_explain_are_mutually_exclusive() -> None:
+    with pytest.raises(SystemExit, match="--json and --explain cannot be used together"):
+        main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--explain"])
