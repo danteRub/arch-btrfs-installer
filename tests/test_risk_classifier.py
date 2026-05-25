@@ -3,6 +3,8 @@ from ai_advisor import CommandRisk, classify_command
 
 def test_read_only_commands_are_safe() -> None:
     safe_commands = [
+        "./scripts/diagnostics.sh",
+        "bash ./scripts/diagnostics.sh",
         "lsblk --json -O",
         "lscpu --json",
         "lspci -nn",
@@ -21,6 +23,8 @@ def test_read_only_commands_are_safe() -> None:
 
 def test_destructive_disk_commands_are_critical() -> None:
     critical_commands = [
+        "./01-installer.sh",
+        "bash ./01-installer.sh",
         "sudo wipefs -a /dev/nvme0n1",
         "sudo sgdisk --zap-all /dev/sda",
         "parted -s /dev/sda mkpart ESP fat32 1MiB 513MiB",
@@ -39,6 +43,8 @@ def test_destructive_disk_commands_are_critical() -> None:
 
 def test_installation_state_commands_are_high_risk() -> None:
     high_risk_commands = [
+        "./02-pacstrap.sh",
+        "bash ./02-pacstrap.sh",
         "pacstrap -K /mnt base linux linux-firmware",
         "pacman -S networkmanager",
         "mount /dev/nvme0n1p2 /mnt",
