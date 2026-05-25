@@ -24,9 +24,17 @@ Generate a human-readable explanation:
 python -m ai_advisor diagnostics/system_report.json --explain
 ```
 
+Generate a concise health report:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --doctor
+```
+
 `--explain` is deterministic. It summarizes risks and review steps without changing commands, warnings or risk labels.
 
-`--json` and `--explain` are mutually exclusive.
+`--doctor` is deterministic and read-only. It summarizes system signals, plan status, command risk counts and warnings.
+
+`--json`, `--explain` and `--doctor` are mutually exclusive.
 
 ## Plan status
 
@@ -51,6 +59,29 @@ JSON output includes:
 }
 ```
 
+## Doctor mode
+
+Doctor mode provides a short operational health report:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --doctor
+```
+
+It includes:
+
+- overall plan status,
+- status reasons,
+- boot mode,
+- CPU vendor,
+- microcode package,
+- network signal,
+- disk candidates,
+- EFI detection,
+- Windows/NTFS marker detection,
+- command risk counts,
+- warnings,
+- safety boundary reminders.
+
 ## Write output to a file
 
 Markdown:
@@ -69,6 +100,12 @@ Explanation:
 
 ```bash
 python -m ai_advisor diagnostics/system_report.json --explain --output explanation.md
+```
+
+Doctor report:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --doctor --output doctor.md
 ```
 
 ## Automation controls
@@ -117,11 +154,12 @@ python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json
 python -m ai_advisor tests/fixtures/multiple_disks.json --strict
 python -m ai_advisor tests/fixtures/uefi_nvme_amd.json --fail-on-critical
 python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json --explain
+python -m ai_advisor tests/fixtures/multiple_disks.json --doctor
 ```
 
 ## Safety boundary
 
-The CLI renders a plan, explanation or JSON payload and returns exit codes. It must not:
+The CLI renders a plan, explanation, doctor report or JSON payload and returns exit codes. It must not:
 
 - execute installer scripts,
 - partition disks,
