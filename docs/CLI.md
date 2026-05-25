@@ -28,6 +28,29 @@ python -m ai_advisor diagnostics/system_report.json --explain
 
 `--json` and `--explain` are mutually exclusive.
 
+## Plan status
+
+Generated plans include a top-level status:
+
+| Status | Meaning |
+| --- | --- |
+| `ready` | No blocking conditions or warnings were detected. |
+| `needs_review` | The plan can be reviewed but contains warnings, critical commands or other manual-review signals. |
+| `blocked` | The advisor cannot safely produce an actionable plan because a required precondition is missing, such as boot mode or disk candidates. |
+
+Markdown output includes a `## Status` section.
+
+JSON output includes:
+
+```json
+{
+  "status": "needs_review",
+  "status_reasons": [
+    "Plan contains critical commands that require explicit human confirmation."
+  ]
+}
+```
+
 ## Write output to a file
 
 Markdown:

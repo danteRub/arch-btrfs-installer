@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .hardware_parser import HardwareSummary
-from .models import InstallPlan, InstallStep
+from .models import CommandRisk, InstallPlan, InstallStep, PlanStatus
 from .risk_classifier import classify_command
 
 
@@ -11,6 +11,51 @@ def _bootloader_name(summary: HardwareSummary) -> str:
     if summary.boot_mode == "BIOS":
         return "manual GRUB review"
     return "manual bootloader review"
+
+
+def _evaluate_plan_status(
+    summary: HardwareSummary,
+    warnings: list[str],
+    steps: list[InstallStep],
+) -> tuple[PlanStatus, list[str]]:
+    """Evaluate the overall operational status of a plan."""
+
+    reasons: list[str] = []
+
+    if summary.boot_mode not in {"UEFI", "BIOS"}:
+        reasons.append("Boot mode is unknown; bootloader planning is blocked.")
+
+    if not summary.disks:
+        reasons.append("No disk candidates were parsed; storage planning is blocked.")
+
+    if reasons:
+        return PlanStatus.BLOCKED, reasons
+
+    critical_commands = [
+        step.command.command
+        for step in steps
+        if step.command is not None and step.command.risk == CommandRisk.CRITICAL
+    ]
+
+    if critical_commands:
+        reasons.append("Plan contains critical commands that require explicit human confirmation.")
+
+    if warnings:
+        reasons.append("Plan contains warnings that require manual review.")
+
+    if summary.network_link_up is False:
+        reasons.append("No active network link was detected; installation may fail before pacstrap.")
+
+    if summary.possible_windows_dual_boot:
+        reasons.append("Possible Windows dual-boot markers require disk and EFI review.")
+
+    if len(summary.disks) > 1:
+        reasons.append("Multiple disk candidates require explicit target disk selection.")
+
+    if reasons:
+        return PlanStatus.NEEDS_REVIEW, reasons
+
+    return PlanStatus.READY, ["No blocking conditions or warnings were detected."]
 
 
 def create_initial_plan(summary: HardwareSummary) -> InstallPlan:
@@ -103,9 +148,12 @@ def create_initial_plan(summary: HardwareSummary) -> InstallPlan:
         f"{summary.boot_mode} installation plan using Btrfs with {bootloader}; "
         f"microcode recommendation: {microcode}."
     )
+    status, status_reasons = _evaluate_plan_status(summary, warnings, steps)
 
     return InstallPlan(
         summary=summary_text,
+        status=status,
+        status_reasons=status_reasons,
         assumptions=assumptions,
         warnings=warnings,
         steps=steps,
