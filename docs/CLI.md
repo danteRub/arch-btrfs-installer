@@ -30,11 +30,19 @@ Generate a concise health report:
 python -m ai_advisor diagnostics/system_report.json --doctor
 ```
 
+Generate a complete report bundle:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --bundle out/
+```
+
 `--explain` is deterministic. It summarizes risks and review steps without changing commands, warnings or risk labels.
 
 `--doctor` is deterministic and read-only. It summarizes system signals, plan status, command risk counts and warnings.
 
-`--json`, `--explain` and `--doctor` are mutually exclusive.
+`--bundle` is deterministic and read-only. It writes multiple report files to a directory.
+
+`--json`, `--explain`, `--doctor` and `--bundle` are mutually exclusive.
 
 ## Plan status
 
@@ -81,6 +89,28 @@ It includes:
 - command risk counts,
 - warnings,
 - safety boundary reminders.
+
+## Bundle mode
+
+Bundle mode creates a portable report directory:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --bundle out/
+```
+
+Generated files:
+
+```text
+out/
+  system_report.json
+  plan.md
+  plan.json
+  doctor.md
+  explanation.md
+  summary.txt
+```
+
+Bundle mode cannot be combined with `--output`, because the bundle path is already the output target.
 
 ## Write output to a file
 
@@ -155,11 +185,12 @@ python -m ai_advisor tests/fixtures/multiple_disks.json --strict
 python -m ai_advisor tests/fixtures/uefi_nvme_amd.json --fail-on-critical
 python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json --explain
 python -m ai_advisor tests/fixtures/multiple_disks.json --doctor
+python -m ai_advisor tests/fixtures/uefi_nvme_amd.json --bundle tmp/advisor-bundle
 ```
 
 ## Safety boundary
 
-The CLI renders a plan, explanation, doctor report or JSON payload and returns exit codes. It must not:
+The CLI renders a plan, explanation, doctor report, report bundle or JSON payload and returns exit codes. It must not:
 
 - execute installer scripts,
 - partition disks,
