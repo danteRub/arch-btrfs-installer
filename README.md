@@ -6,6 +6,8 @@ This repository is being evolved into an **AI Engineering portfolio project**: a
 
 See [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for the AI Engineering case study and portfolio summary.
 
+See [`docs/CV_SNIPPETS.md`](docs/CV_SNIPPETS.md) for CV, LinkedIn and interview-ready descriptions.
+
 ## Current scripts
 
 | Script | Purpose |
