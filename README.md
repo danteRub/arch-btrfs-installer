@@ -18,6 +18,8 @@ The installer scripts can perform destructive operations such as wiping disks an
 
 > AI may explain, inspect, classify and recommend. It must not automatically execute destructive commands.
 
+See [`docs/SAFETY.md`](docs/SAFETY.md) for the full project safety policy.
+
 Command risk classes:
 
 | Risk | Meaning |
@@ -93,6 +95,10 @@ ai_advisor/
   planner.py         # Generate deterministic install plans
   __main__.py        # CLI entrypoint
 ```
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions that touch installer or advisor safety logic must include tests.
 
 ## Roadmap
 
