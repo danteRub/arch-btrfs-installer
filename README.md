@@ -81,6 +81,30 @@ The current pipeline is:
 system_report.json -> hardware parser -> deterministic planner -> risk classifier -> human approval
 ```
 
+## Make commands
+
+Common commands are available through `make`:
+
+```bash
+make help
+make setup
+make test
+make diagnose
+make plan
+make plan-json
+make explain
+make explain-llm
+```
+
+Generated paths can be overridden:
+
+```bash
+make plan REPORT=tests/fixtures/uefi_nvme_amd.json PLAN=tmp/plan.md
+make explain REPORT=tests/fixtures/uefi_windows_dualboot.json EXPLANATION=tmp/explanation.md
+```
+
+`make explain-llm` uses the OpenAI-compatible provider and requires the LLM environment variables described in [`docs/LLM_EXPLAINER.md`](docs/LLM_EXPLAINER.md).
+
 ## Example outputs
 
 Pre-generated examples are available for quick review:
@@ -95,9 +119,8 @@ Pre-generated examples are available for quick review:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-pytest -q
+make setup
+make test
 ```
 
 Try the CLI with included fixtures:
