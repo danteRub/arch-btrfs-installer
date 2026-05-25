@@ -70,7 +70,7 @@ def test_no_network_adds_verification_step() -> None:
     assert any(step.title == "Verify network before pacstrap" for step in plan.steps)
 
 
-def test_review_commands_are_not_misclassified_as_safe_when_unknown() -> None:
+def test_local_installer_scripts_are_classified_conservatively() -> None:
     summary = HardwareSummary(
         boot_mode="UEFI",
         cpu_vendor="AuthenticAMD",
@@ -85,10 +85,10 @@ def test_review_commands_are_not_misclassified_as_safe_when_unknown() -> None:
     installer_command = next(command for command in commands if command.command == "./01-installer.sh")
     pacstrap_command = next(command for command in commands if command.command == "./02-pacstrap.sh")
 
-    assert installer_command.risk == CommandRisk.MEDIUM
-    assert pacstrap_command.risk == CommandRisk.MEDIUM
-    assert installer_command.requires_confirmation is False
-    assert pacstrap_command.requires_confirmation is False
+    assert installer_command.risk == CommandRisk.CRITICAL
+    assert pacstrap_command.risk == CommandRisk.HIGH
+    assert installer_command.requires_confirmation is True
+    assert pacstrap_command.requires_confirmation is True
 
 
 def test_read_only_review_steps_are_safe() -> None:
