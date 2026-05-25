@@ -1,5 +1,10 @@
 # Arch Btrfs Installer
 
+[![tests](https://github.com/danteRub/arch-btrfs-installer/actions/workflows/tests.yml/badge.svg)](https://github.com/danteRub/arch-btrfs-installer/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Safety](https://img.shields.io/badge/safety-human--in--the--loop-orange)
+![LLM](https://img.shields.io/badge/LLM-optional-green)
+
 Safe, script-based Arch Linux installer focused on Btrfs layouts, UEFI handling, systemd-boot and a clean base system.
 
 This repository is being evolved into an **AI Engineering portfolio project**: an installer assistant that can inspect hardware, produce a structured diagnostic report, classify risky commands and generate auditable installation plans without executing destructive operations automatically.
@@ -7,6 +12,17 @@ This repository is being evolved into an **AI Engineering portfolio project**: a
 See [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for the AI Engineering case study and portfolio summary.
 
 See [`docs/CV_SNIPPETS.md`](docs/CV_SNIPPETS.md) for CV, LinkedIn and interview-ready descriptions.
+
+## Project metadata
+
+| Field | Value |
+| --- | --- |
+| Domain | Linux automation / AI Engineering |
+| Core language | Python 3.11+ and Bash |
+| Safety model | Human-in-the-loop advisory system |
+| LLM usage | Optional explanation layer only |
+| CI | GitHub Actions + pytest |
+| Main risk boundary | Deterministic command classification before LLM output |
 
 ## Current scripts
 
@@ -22,7 +38,7 @@ The installer scripts can perform destructive operations such as wiping disks an
 
 > AI may explain, inspect, classify and recommend. It must not automatically execute destructive commands.
 
-See [`docs/SAFETY.md`](docs/SAFETY.md) for the full project safety policy.
+See [`docs/SAFETY.md`](docs/SAFETY.md) and [`SECURITY.md`](SECURITY.md) for the full project safety and reporting policies.
 
 Command risk classes:
 
@@ -138,11 +154,14 @@ python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json
 
 ```text
 ai_advisor/
-  models.py          # Pydantic schemas
-  hardware_parser.py # Parse diagnostics JSON
-  risk_classifier.py # Classify generated commands
-  planner.py         # Generate deterministic install plans
-  __main__.py        # CLI entrypoint
+  models.py              # Pydantic schemas
+  hardware_parser.py     # Parse diagnostics JSON
+  risk_classifier.py     # Classify generated commands
+  planner.py             # Generate deterministic install plans
+  explainer.py           # Deterministic explanations
+  llm_explainer.py       # Optional validated LLM explanation boundary
+  openai_compatible.py   # Optional OpenAI-compatible client
+  __main__.py            # CLI entrypoint
 ```
 
 ## Contributing
