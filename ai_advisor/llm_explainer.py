@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .explainer import explain_plan
-from .models import InstallPlan
+from .models import CommandRisk, InstallPlan
 
 
 SYSTEM_PROMPT = """You are a safety-focused Linux installation advisor.
@@ -84,7 +84,7 @@ def validate_llm_explanation(plan: InstallPlan, explanation: str) -> list[str]:
     critical_commands = [
         step.command.command
         for step in plan.steps
-        if step.command is not None and step.command.risk == "critical"
+        if step.command is not None and step.command.risk == CommandRisk.CRITICAL
     ]
 
     for command in critical_commands:
