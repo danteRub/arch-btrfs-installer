@@ -127,9 +127,39 @@ def test_cli_explain_mode_can_write_output_file(tmp_path, capsys) -> None:
     assert "# Plan explanation" in output.read_text(encoding="utf-8")
 
 
-def test_cli_json_and_explain_are_mutually_exclusive() -> None:
-    with pytest.raises(SystemExit, match="--json and --explain cannot be used together"):
+def test_cli_doctor_mode_renders_health_report(capsys) -> None:
+    exit_code = main([str(FIXTURES / "uefi_nvme_amd.json"), "--doctor"])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "# Advisor doctor report" in captured.out
+    assert "Status: `needs_review`" in captured.out
+    assert "Boot mode: `UEFI`" in captured.out
+    assert "Microcode package: `amd-ucode`" in captured.out
+    assert "Critical commands: `1`" in captured.out
+
+
+def test_cli_doctor_mode_can_write_output_file(tmp_path, capsys) -> None:
+    output = tmp_path / "doctor.md"
+
+    exit_code = main([str(FIXTURES / "uefi_windows_dualboot.json"), "--doctor", "--output", str(output)])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out == ""
+    contents = output.read_text(encoding="utf-8")
+    assert "# Advisor doctor report" in contents
+    assert "Windows/NTFS markers detected: `yes`" in contents
+
+
+def test_cli_modes_are_mutually_exclusive() -> None:
+    with pytest.raises(SystemExit, match="--json, --explain and --doctor are mutually exclusive"):
         main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--explain"])
+
+    with pytest.raises(SystemExit, match="--json, --explain and --doctor are mutually exclusive"):
+        main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--doctor"])
 
 
 def test_cli_llm_provider_requires_explain() -> None:

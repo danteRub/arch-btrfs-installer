@@ -1,5 +1,6 @@
 """Safety-aware advisor components for Arch Btrfs installation planning."""
 
+from .doctor import render_doctor_report
 from .explainer import explain_command_risk, explain_plan
 from .hardware_parser import DiskCandidate, HardwareSummary, summarize_hardware
 from .llm_explainer import (
@@ -30,6 +31,7 @@ __all__ = [
     "explain_command_risk",
     "explain_plan",
     "explain_plan_with_optional_llm",
+    "render_doctor_report",
     "summarize_hardware",
     "validate_llm_explanation",
 ]
