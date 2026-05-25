@@ -2,6 +2,7 @@
 
 from .hardware_parser import DiskCandidate, HardwareSummary, summarize_hardware
 from .models import CommandRisk, InstallCommand, InstallPlan, SystemReport
+from .planner import create_initial_plan
 from .risk_classifier import classify_command
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "InstallPlan",
     "SystemReport",
     "classify_command",
+    "create_initial_plan",
     "summarize_hardware",
 ]
