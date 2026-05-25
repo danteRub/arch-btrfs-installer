@@ -123,3 +123,24 @@ def test_cli_explain_mode_can_write_output_file(tmp_path, capsys) -> None:
 def test_cli_json_and_explain_are_mutually_exclusive() -> None:
     with pytest.raises(SystemExit, match="--json and --explain cannot be used together"):
         main([str(FIXTURES / "uefi_nvme_amd.json"), "--json", "--explain"])
+
+
+def test_cli_llm_provider_requires_explain() -> None:
+    with pytest.raises(SystemExit, match="--llm-provider requires --explain"):
+        main([
+            str(FIXTURES / "uefi_nvme_amd.json"),
+            "--llm-provider",
+            "openai-compatible",
+        ])
+
+
+def test_cli_openai_compatible_provider_requires_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("AI_ADVISOR_OPENAI_API_KEY", raising=False)
+
+    with pytest.raises(SystemExit, match="AI_ADVISOR_OPENAI_API_KEY"):
+        main([
+            str(FIXTURES / "uefi_nvme_amd.json"),
+            "--explain",
+            "--llm-provider",
+            "openai-compatible",
+        ])

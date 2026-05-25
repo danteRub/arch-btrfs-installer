@@ -9,7 +9,9 @@ from pydantic import ValidationError
 
 from .explainer import explain_plan
 from .hardware_parser import summarize_hardware
+from .llm_explainer import explain_plan_with_optional_llm
 from .models import CommandRisk, InstallPlan, SystemReport
+from .openai_compatible import OpenAICompatibleClient, OpenAICompatibleClientError
 from .planner import create_initial_plan
 
 
@@ -91,6 +93,19 @@ def _write_or_print(content: str, output: Path | None) -> None:
     output.write_text(content, encoding="utf-8")
 
 
+def _build_llm_client(provider: str | None):
+    if provider is None:
+        return None
+
+    if provider == "openai-compatible":
+        try:
+            return OpenAICompatibleClient.from_env()
+        except OpenAICompatibleClientError as exc:
+            raise SystemExit(str(exc)) from exc
+
+    raise SystemExit(f"Unsupported LLM provider: {provider}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Create a conservative Arch Btrfs installation plan from diagnostics JSON."
@@ -108,7 +123,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--explain",
         action="store_true",
-        help="Print a deterministic human-readable explanation instead of the raw plan.",
+        help="Print a human-readable explanation instead of the raw plan.",
+    )
+    parser.add_argument(
+        "--llm-provider",
+        choices=["openai-compatible"],
+        help="Optional LLM provider used only with --explain. Requires provider-specific env vars.",
     )
     parser.add_argument(
         "--output",
@@ -131,6 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json and args.explain:
         raise SystemExit("--json and --explain cannot be used together")
 
+    if args.llm_provider and not args.explain:
+        raise SystemExit("--llm-provider requires --explain")
+
     report = _load_report(args.report)
     summary = summarize_hardware(report)
     plan = create_initial_plan(summary)
@@ -138,7 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         rendered = plan.model_dump_json(indent=2) + "\n"
     elif args.explain:
-        rendered = explain_plan(plan)
+        client = _build_llm_client(args.llm_provider)
+        if client is None:
+            rendered = explain_plan(plan)
+        else:
+            rendered = explain_plan_with_optional_llm(plan, client=client).explanation
     else:
         rendered = _render_plan(plan)
 

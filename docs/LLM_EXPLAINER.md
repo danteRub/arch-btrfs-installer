@@ -58,6 +58,35 @@ result = explain_plan_with_optional_llm(plan, client=MyLLMClient())
 print(result.explanation)
 ```
 
+## OpenAI-compatible provider
+
+The package includes a minimal OpenAI-compatible client using Python's standard library:
+
+```python
+from ai_advisor.openai_compatible import OpenAICompatibleClient
+
+client = OpenAICompatibleClient.from_env()
+result = explain_plan_with_optional_llm(plan, client=client)
+```
+
+Environment variables:
+
+| Variable | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `AI_ADVISOR_OPENAI_API_KEY` | yes | none | API key or compatible bearer token. |
+| `AI_ADVISOR_OPENAI_MODEL` | no | `gpt-4.1-mini` | Chat model name. |
+| `AI_ADVISOR_OPENAI_BASE_URL` | no | `https://api.openai.com/v1` | OpenAI-compatible API base URL. |
+| `AI_ADVISOR_OPENAI_TIMEOUT_SECONDS` | no | `30` | Request timeout in seconds. |
+
+CLI usage:
+
+```bash
+AI_ADVISOR_OPENAI_API_KEY=... \
+python -m ai_advisor diagnostics/system_report.json --explain --llm-provider openai-compatible
+```
+
+The provider is only available with `--explain`. It is not available with `--json` or raw plan mode.
+
 ## Fallback behavior
 
 If no client is provided, the deterministic explanation is used.
@@ -81,4 +110,4 @@ This validation is defensive. It does not prove the LLM output is perfect. It on
 
 ## Testing rule
 
-Tests must not require network access or real API keys. Use fake clients.
+Tests must not require network access or real API keys. Use fake clients or monkeypatch network calls.
