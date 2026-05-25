@@ -4,6 +4,8 @@ Safe, script-based Arch Linux installer focused on Btrfs layouts, UEFI handling,
 
 This repository is being evolved into an **AI Engineering portfolio project**: an installer assistant that can inspect hardware, produce a structured diagnostic report, classify risky commands and generate auditable installation plans without executing destructive operations automatically.
 
+See [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for the AI Engineering case study and portfolio summary.
+
 ## Current scripts
 
 | Script | Purpose |
