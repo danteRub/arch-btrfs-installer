@@ -19,7 +19,7 @@ This is advisory only.
 The command `./01-installer.sh` is critical and requires human confirmation.
 
 Windows or NTFS markers were detected; avoid wiping disks without review.
-Do not wipe any disk until the target disk and EFI partition have been manually verified.
+Possible Windows dual-boot detected. Do not wipe any disk until the target disk and EFI partition have been manually verified.
 """
 
 
