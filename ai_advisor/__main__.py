@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from .doctor import render_doctor_report
 from .explainer import explain_plan
 from .hardware_parser import summarize_hardware
 from .llm_explainer import explain_plan_with_optional_llm
@@ -132,6 +133,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Print a human-readable explanation instead of the raw plan.",
     )
     parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Print a concise read-only health report for the diagnostic and generated plan.",
+    )
+    parser.add_argument(
         "--llm-provider",
         choices=["openai-compatible"],
         help="Optional LLM provider used only with --explain. Requires provider-specific env vars.",
@@ -154,8 +160,9 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    if args.json and args.explain:
-        raise SystemExit("--json and --explain cannot be used together")
+    selected_modes = sum(bool(mode) for mode in (args.json, args.explain, args.doctor))
+    if selected_modes > 1:
+        raise SystemExit("--json, --explain and --doctor are mutually exclusive")
 
     if args.llm_provider and not args.explain:
         raise SystemExit("--llm-provider requires --explain")
@@ -172,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
             rendered = explain_plan(plan)
         else:
             rendered = explain_plan_with_optional_llm(plan, client=client).explanation
+    elif args.doctor:
+        rendered = render_doctor_report(summary, plan)
     else:
         rendered = _render_plan(plan)
 
