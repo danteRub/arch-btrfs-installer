@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from .explainer import explain_plan
 from .hardware_parser import summarize_hardware
 from .models import CommandRisk, InstallPlan, SystemReport
 from .planner import create_initial_plan
@@ -105,6 +106,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Print the generated InstallPlan as JSON instead of Markdown.",
     )
     parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="Print a deterministic human-readable explanation instead of the raw plan.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help="Write the generated plan to a file instead of stdout.",
@@ -122,12 +128,17 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
+    if args.json and args.explain:
+        raise SystemExit("--json and --explain cannot be used together")
+
     report = _load_report(args.report)
     summary = summarize_hardware(report)
     plan = create_initial_plan(summary)
 
     if args.json:
         rendered = plan.model_dump_json(indent=2) + "\n"
+    elif args.explain:
+        rendered = explain_plan(plan)
     else:
         rendered = _render_plan(plan)
 
