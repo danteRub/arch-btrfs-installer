@@ -8,6 +8,7 @@ from .models import CommandRisk, InstallCommand
 _CRITICAL_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
+        r"^\s*(sudo\s+)?(bash\s+)?\./01-installer\.sh(\s|$)",
         r"(^|\s)(sudo\s+)?wipefs(\s|$)",
         r"(^|\s)(sudo\s+)?sgdisk(\s|$)",
         r"(^|\s)(sudo\s+)?parted(\s|$).*(mkpart|rm|resizepart|set)",
@@ -21,6 +22,7 @@ _CRITICAL_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 _HIGH_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
+        r"^\s*(sudo\s+)?(bash\s+)?\./02-pacstrap\.sh(\s|$)",
         r"(^|\s)(sudo\s+)?pacstrap(\s|$)",
         r"(^|\s)(sudo\s+)?pacman\s+-S",
         r"(^|\s)(sudo\s+)?mount(\s|$)",
@@ -48,6 +50,7 @@ _MEDIUM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 _SAFE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
+        r"^\s*(sudo\s+)?(bash\s+)?\./scripts/diagnostics\.sh(\s|$)",
         r"^\s*(sudo\s+)?lsblk(\s|$)",
         r"^\s*(sudo\s+)?lscpu(\s|$)",
         r"^\s*(sudo\s+)?lspci(\s|$)",
