@@ -16,6 +16,8 @@ See [`docs/CV_SNIPPETS.md`](docs/CV_SNIPPETS.md) for CV, LinkedIn and interview-
 
 See [`docs/REPO_TOPICS.md`](docs/REPO_TOPICS.md) for suggested GitHub topics and repository descriptions.
 
+See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/RELEASE.md`](docs/RELEASE.md) for release notes and release checklist.
+
 ## Project metadata
 
 | Field | Value |
@@ -112,10 +114,13 @@ Common commands are available through `make`:
 ```bash
 make help
 make setup
+make lint
 make test
 make diagnose
 make plan
 make plan-json
+make doctor
+make bundle
 make explain
 make explain-llm
 ```
@@ -125,6 +130,7 @@ Generated paths can be overridden:
 ```bash
 make plan REPORT=tests/fixtures/uefi_nvme_amd.json PLAN=tmp/plan.md
 make explain REPORT=tests/fixtures/uefi_windows_dualboot.json EXPLANATION=tmp/explanation.md
+make bundle REPORT=tests/fixtures/uefi_nvme_amd.json BUNDLE=tmp/advisor-bundle
 ```
 
 `make explain-llm` uses the OpenAI-compatible provider and requires the LLM environment variables described in [`docs/LLM_EXPLAINER.md`](docs/LLM_EXPLAINER.md).
@@ -144,6 +150,7 @@ Pre-generated examples are available for quick review:
 python -m venv .venv
 source .venv/bin/activate
 make setup
+make lint
 make test
 ```
 
@@ -165,6 +172,7 @@ ai_advisor/
   explainer.py           # Deterministic explanations
   llm_explainer.py       # Optional validated LLM explanation boundary
   openai_compatible.py   # Optional OpenAI-compatible client
+  doctor.py              # Read-only doctor report
   __main__.py            # CLI entrypoint
 ```
 
