@@ -46,6 +46,12 @@ def _render_plan(plan: InstallPlan) -> str:
     lines.append(plan.summary)
     lines.append("")
 
+    lines.append("## Status")
+    lines.append(f"- Status: `{plan.status.value}`")
+    for reason in plan.status_reasons:
+        lines.append(f"- {reason}")
+    lines.append("")
+
     if plan.assumptions:
         lines.append("## Assumptions")
         for assumption in plan.assumptions:
