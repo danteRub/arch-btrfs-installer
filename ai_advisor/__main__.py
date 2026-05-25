@@ -70,6 +70,26 @@ def _render_plan(plan: InstallPlan) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _has_critical_commands(plan: InstallPlan) -> bool:
+    return any(
+        step.command is not None and step.command.risk == CommandRisk.CRITICAL
+        for step in plan.steps
+    )
+
+
+def _has_warnings(plan: InstallPlan) -> bool:
+    return bool(plan.warnings)
+
+
+def _write_or_print(content: str, output: Path | None) -> None:
+    if output is None:
+        print(content, end="")
+        return
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content, encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Create a conservative Arch Btrfs installation plan from diagnostics JSON."
@@ -84,6 +104,21 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Print the generated InstallPlan as JSON instead of Markdown.",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Write the generated plan to a file instead of stdout.",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Return exit code 2 when the plan contains warnings.",
+    )
+    parser.add_argument(
+        "--fail-on-critical",
+        action="store_true",
+        help="Return exit code 3 when the plan contains critical commands.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -92,9 +127,17 @@ def main(argv: list[str] | None = None) -> int:
     plan = create_initial_plan(summary)
 
     if args.json:
-        print(plan.model_dump_json(indent=2))
+        rendered = plan.model_dump_json(indent=2) + "\n"
     else:
-        print(_render_plan(plan), end="")
+        rendered = _render_plan(plan)
+
+    _write_or_print(rendered, args.output)
+
+    if args.fail_on_critical and _has_critical_commands(plan):
+        return 3
+
+    if args.strict and _has_warnings(plan):
+        return 2
 
     return 0
 
