@@ -1,10 +1,11 @@
-.PHONY: help setup test diagnose plan plan-json doctor explain explain-llm clean
+.PHONY: help setup test diagnose plan plan-json doctor bundle explain explain-llm clean
 
 PYTHON ?= python
 REPORT ?= diagnostics/system_report.json
 PLAN ?= plan.md
 PLAN_JSON ?= plan.json
 DOCTOR ?= doctor.md
+BUNDLE ?= advisor-bundle
 EXPLANATION ?= explanation.md
 
 help:
@@ -20,6 +21,7 @@ help:
 	@echo "  make plan         Generate Markdown plan to $(PLAN)"
 	@echo "  make plan-json    Generate JSON plan to $(PLAN_JSON)"
 	@echo "  make doctor       Generate doctor report to $(DOCTOR)"
+	@echo "  make bundle       Generate report bundle to $(BUNDLE)"
 	@echo "  make explain      Generate deterministic explanation to $(EXPLANATION)"
 	@echo "  make explain-llm  Generate LLM explanation using openai-compatible provider"
 	@echo ""
@@ -28,6 +30,7 @@ help:
 	@echo "  PLAN=plan.md"
 	@echo "  PLAN_JSON=plan.json"
 	@echo "  DOCTOR=doctor.md"
+	@echo "  BUNDLE=advisor-bundle"
 	@echo "  EXPLANATION=explanation.md"
 
 setup:
@@ -49,6 +52,9 @@ plan-json:
 doctor:
 	$(PYTHON) -m ai_advisor $(REPORT) --doctor --output $(DOCTOR)
 
+bundle:
+	$(PYTHON) -m ai_advisor $(REPORT) --bundle $(BUNDLE)
+
 explain:
 	$(PYTHON) -m ai_advisor $(REPORT) --explain --output $(EXPLANATION)
 
@@ -57,3 +63,4 @@ explain-llm:
 
 clean:
 	rm -f $(PLAN) $(PLAN_JSON) $(DOCTOR) $(EXPLANATION)
+	rm -rf $(BUNDLE)
