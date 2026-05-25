@@ -15,6 +15,14 @@ class CommandRisk(StrEnum):
     CRITICAL = "critical"
 
 
+class PlanStatus(StrEnum):
+    """Overall operational status for an installation plan."""
+
+    READY = "ready"
+    NEEDS_REVIEW = "needs_review"
+    BLOCKED = "blocked"
+
+
 class SystemInfo(BaseModel):
     """Normalized system facts extracted from diagnostics/system_report.json."""
 
@@ -55,6 +63,8 @@ class InstallPlan(BaseModel):
     """Machine-readable installation plan for human review."""
 
     summary: str
+    status: PlanStatus = PlanStatus.NEEDS_REVIEW
+    status_reasons: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     steps: list[InstallStep] = Field(default_factory=list)
