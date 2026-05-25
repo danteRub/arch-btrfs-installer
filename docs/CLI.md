@@ -18,6 +18,16 @@ Generate JSON:
 python -m ai_advisor diagnostics/system_report.json --json
 ```
 
+Generate a human-readable explanation:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --explain
+```
+
+`--explain` is deterministic. It summarizes risks and review steps without changing commands, warnings or risk labels.
+
+`--json` and `--explain` are mutually exclusive.
+
 ## Write output to a file
 
 Markdown:
@@ -30,6 +40,12 @@ JSON:
 
 ```bash
 python -m ai_advisor diagnostics/system_report.json --json --output plan.json
+```
+
+Explanation:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --explain --output explanation.md
 ```
 
 ## Automation controls
@@ -77,14 +93,16 @@ python -m ai_advisor tests/fixtures/uefi_nvme_amd.json
 python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json
 python -m ai_advisor tests/fixtures/multiple_disks.json --strict
 python -m ai_advisor tests/fixtures/uefi_nvme_amd.json --fail-on-critical
+python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json --explain
 ```
 
 ## Safety boundary
 
-The CLI renders a plan and returns exit codes. It must not:
+The CLI renders a plan, explanation or JSON payload and returns exit codes. It must not:
 
 - execute installer scripts,
 - partition disks,
 - format filesystems,
 - modify boot records,
-- override deterministic risk classification.
+- override deterministic risk classification,
+- remove warnings from the generated plan.

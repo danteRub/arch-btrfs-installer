@@ -1,5 +1,6 @@
 """Safety-aware advisor components for Arch Btrfs installation planning."""
 
+from .explainer import explain_command_risk, explain_plan
 from .hardware_parser import DiskCandidate, HardwareSummary, summarize_hardware
 from .models import CommandRisk, InstallCommand, InstallPlan, SystemReport
 from .planner import create_initial_plan
@@ -14,5 +15,7 @@ __all__ = [
     "SystemReport",
     "classify_command",
     "create_initial_plan",
+    "explain_command_risk",
+    "explain_plan",
     "summarize_hardware",
 ]
