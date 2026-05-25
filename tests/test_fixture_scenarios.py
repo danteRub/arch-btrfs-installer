@@ -17,7 +17,6 @@ def _load_fixture(name: str) -> SystemReport:
 @pytest.mark.parametrize(
     ("fixture", "expected_summary", "expected_warning"),
     [
-        ("bios_sata_intel.json", "BIOS", "No disk candidates"),
         ("uefi_without_efi.json", "UEFI", "no EFI partition"),
         ("multiple_disks.json", "UEFI", "Multiple disk candidates"),
         ("no_network.json", "UEFI", "No active network link"),
@@ -43,8 +42,10 @@ def test_bios_fixture_uses_manual_bootloader_review() -> None:
     summary = summarize_hardware(report)
     plan = create_initial_plan(summary)
 
+    assert "BIOS" in plan.summary
     assert "manual GRUB review" in plan.summary
     assert any("intel-ucode" in assumption for assumption in plan.assumptions)
+    assert summary.disks[0].name == "sda"
 
 
 def test_multiple_disks_fixture_detects_windows_and_multiple_disk_risks() -> None:
