@@ -1,4 +1,4 @@
-from ai_advisor import CommandRisk, create_initial_plan
+from ai_advisor import CommandRisk, PlanStatus, create_initial_plan
 from ai_advisor.hardware_parser import DiskCandidate, HardwareSummary
 
 
@@ -24,6 +24,8 @@ def test_initial_plan_contains_expected_uefi_amd_summary() -> None:
     assert "amd-ucode" in plan.summary
     assert any("systemd-boot" in assumption for assumption in plan.assumptions)
     assert len(plan.steps) >= 4
+    assert plan.status == PlanStatus.NEEDS_REVIEW
+    assert any("critical commands" in reason for reason in plan.status_reasons)
 
 
 def test_windows_dual_boot_adds_warning() -> None:
@@ -40,6 +42,8 @@ def test_windows_dual_boot_adds_warning() -> None:
 
     assert any("Windows" in warning for warning in plan.warnings)
     assert any("Do not wipe" in warning for warning in plan.warnings)
+    assert plan.status == PlanStatus.NEEDS_REVIEW
+    assert any("Windows dual-boot" in reason for reason in plan.status_reasons)
 
 
 def test_multiple_disks_require_explicit_selection() -> None:
@@ -54,6 +58,8 @@ def test_multiple_disks_require_explicit_selection() -> None:
     plan = create_initial_plan(summary)
 
     assert any("Multiple disk" in warning for warning in plan.warnings)
+    assert plan.status == PlanStatus.NEEDS_REVIEW
+    assert any("Multiple disk" in reason for reason in plan.status_reasons)
 
 
 def test_no_network_adds_verification_step() -> None:
@@ -68,6 +74,38 @@ def test_no_network_adds_verification_step() -> None:
     plan = create_initial_plan(summary)
 
     assert any(step.title == "Verify network before pacstrap" for step in plan.steps)
+    assert plan.status == PlanStatus.NEEDS_REVIEW
+    assert any("No active network" in reason for reason in plan.status_reasons)
+
+
+def test_no_disks_blocks_plan() -> None:
+    summary = HardwareSummary(
+        boot_mode="UEFI",
+        cpu_vendor="AuthenticAMD",
+        microcode_package="amd-ucode",
+        network_link_up=True,
+        disks=[],
+    )
+
+    plan = create_initial_plan(summary)
+
+    assert plan.status == PlanStatus.BLOCKED
+    assert any("No disk candidates" in reason for reason in plan.status_reasons)
+
+
+def test_unknown_boot_mode_blocks_plan() -> None:
+    summary = HardwareSummary(
+        boot_mode="unknown",
+        cpu_vendor="AuthenticAMD",
+        microcode_package="amd-ucode",
+        network_link_up=True,
+        disks=[DiskCandidate(name="sda")],
+    )
+
+    plan = create_initial_plan(summary)
+
+    assert plan.status == PlanStatus.BLOCKED
+    assert any("Boot mode is unknown" in reason for reason in plan.status_reasons)
 
 
 def test_local_installer_scripts_are_classified_conservatively() -> None:
