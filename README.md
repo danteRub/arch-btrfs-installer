@@ -57,6 +57,15 @@ The current pipeline is:
 system_report.json -> hardware parser -> deterministic planner -> risk classifier -> human approval
 ```
 
+## Example outputs
+
+Pre-generated examples are available for quick review:
+
+| Scenario | Output |
+| --- | --- |
+| UEFI + NVMe + AMD CPU | [`examples/uefi_nvme_amd.md`](examples/uefi_nvme_amd.md) |
+| UEFI + Windows dual boot markers | [`examples/uefi_windows_dualboot.md`](examples/uefi_windows_dualboot.md) |
+
 ## Local development
 
 ```bash
