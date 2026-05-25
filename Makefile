@@ -1,4 +1,4 @@
-.PHONY: help setup test diagnose plan plan-json doctor bundle explain explain-llm clean
+.PHONY: help setup lint test diagnose plan plan-json doctor bundle explain explain-llm clean
 
 PYTHON ?= python
 REPORT ?= diagnostics/system_report.json
@@ -13,6 +13,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  make setup        Create/update local editable install with dev dependencies"
+	@echo "  make lint         Run ruff checks"
 	@echo "  make test         Run pytest"
 	@echo "  make clean        Remove generated local outputs"
 	@echo ""
@@ -36,6 +37,9 @@ help:
 setup:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install -e ".[dev]"
+
+lint:
+	$(PYTHON) -m ruff check .
 
 test:
 	$(PYTHON) -m pytest -q
