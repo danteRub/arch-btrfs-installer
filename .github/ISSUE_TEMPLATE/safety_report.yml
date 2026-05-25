@@ -1,0 +1,84 @@
+name: Safety report
+description: Report a safety issue in diagnostics, planning, risk classification or LLM explanation
+title: "[Safety]: "
+labels: ["safety"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for safety-related issues.
+
+        Examples:
+        - destructive command classified below `critical`,
+        - unknown command classified as `safe`,
+        - warning hidden or omitted,
+        - LLM explanation bypassing validation,
+        - diagnostics writing outside the expected output path.
+
+        Do not include private machine identifiers, disk serial numbers, secrets or API keys.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is the safety issue?
+      placeholder: "Example: mkfs.btrfs is not classified as critical in scenario X."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      options:
+        - diagnostics
+        - hardware parser
+        - planner
+        - risk classifier
+        - CLI
+        - deterministic explainer
+        - LLM explainer
+        - OpenAI-compatible client
+        - documentation
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible example. Prefer synthetic fixtures.
+      placeholder: |
+        1. Run ...
+        2. Observe ...
+        3. Expected ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected safe behavior
+      description: What should the advisor do instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste sanitized CLI output, test output or fixture snippets.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checklist
+      options:
+        - label: I removed secrets, tokens, disk serials and private identifiers.
+          required: true
+        - label: I understand the advisor must not execute destructive commands automatically.
+          required: true

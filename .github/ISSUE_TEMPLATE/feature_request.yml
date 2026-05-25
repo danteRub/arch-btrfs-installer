@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest an improvement to the advisor, CLI, docs or safety model
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem should this feature solve?
+      placeholder: "Example: It is hard to compare two generated plans."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - diagnostics
+        - hardware parser
+        - planner
+        - risk classifier
+        - CLI
+        - deterministic explainer
+        - LLM explainer
+        - OpenAI-compatible client
+        - fixtures/tests
+        - documentation
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety impact
+      description: Could this affect destructive commands, risk labels, warnings or LLM behavior?
+      placeholder: "Explain whether this changes safety boundaries."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
