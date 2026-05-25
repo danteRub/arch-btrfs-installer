@@ -75,6 +75,8 @@ Exit codes:
 | `2` | `--strict` was enabled and the plan contains warnings. |
 | `3` | `--fail-on-critical` was enabled and the plan contains critical commands. |
 
+See [`docs/CLI.md`](docs/CLI.md) for the complete CLI reference.
+
 The current pipeline is:
 
 ```text
