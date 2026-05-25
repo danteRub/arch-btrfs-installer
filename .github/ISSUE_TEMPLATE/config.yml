@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security policy
+    url: https://github.com/danteRub/arch-btrfs-installer/blob/main/SECURITY.md
+    about: Read the security and safety reporting policy before sharing sensitive details.
