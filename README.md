@@ -53,6 +53,28 @@ JSON output is also available:
 python -m ai_advisor diagnostics/system_report.json --json
 ```
 
+Write the generated plan to a file:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --output plan.md
+python -m ai_advisor diagnostics/system_report.json --json --output plan.json
+```
+
+Automation-oriented exit controls:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --strict
+python -m ai_advisor diagnostics/system_report.json --fail-on-critical
+```
+
+Exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Plan generated successfully. |
+| `2` | `--strict` was enabled and the plan contains warnings. |
+| `3` | `--fail-on-critical` was enabled and the plan contains critical commands. |
+
 The current pipeline is:
 
 ```text
