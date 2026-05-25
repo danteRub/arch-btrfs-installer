@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from .doctor import render_doctor_report
 from .explainer import explain_plan
-from .hardware_parser import summarize_hardware
+from .hardware_parser import HardwareSummary, summarize_hardware
 from .llm_explainer import explain_plan_with_optional_llm
 from .models import CommandRisk, InstallPlan, SystemReport
 from .openai_compatible import OpenAICompatibleClient, OpenAICompatibleClientError
@@ -80,6 +80,50 @@ def _render_plan(plan: InstallPlan) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _render_bundle_summary(summary: HardwareSummary, plan: InstallPlan) -> str:
+    critical_count = sum(
+        1 for step in plan.steps if step.command is not None and step.command.risk == CommandRisk.CRITICAL
+    )
+    high_count = sum(
+        1 for step in plan.steps if step.command is not None and step.command.risk == CommandRisk.HIGH
+    )
+    return (
+        "Arch Btrfs AI Advisor bundle\n"
+        "=============================\n\n"
+        f"Status: {plan.status.value}\n"
+        f"Boot mode: {summary.boot_mode}\n"
+        f"CPU vendor: {summary.cpu_vendor}\n"
+        f"Microcode package: {summary.microcode_package or 'unknown'}\n"
+        f"Network link detected: {summary.network_link_up}\n"
+        f"Disk candidates: {len(summary.disks)}\n"
+        f"Warnings: {len(plan.warnings)}\n"
+        f"High-risk commands: {high_count}\n"
+        f"Critical commands: {critical_count}\n\n"
+        "Generated files:\n"
+        "- system_report.json\n"
+        "- plan.md\n"
+        "- plan.json\n"
+        "- doctor.md\n"
+        "- explanation.md\n"
+        "- summary.txt\n"
+    )
+
+
+def _write_bundle(
+    output_dir: Path,
+    report: SystemReport,
+    summary: HardwareSummary,
+    plan: InstallPlan,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "system_report.json").write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    (output_dir / "plan.md").write_text(_render_plan(plan), encoding="utf-8")
+    (output_dir / "plan.json").write_text(plan.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    (output_dir / "doctor.md").write_text(render_doctor_report(summary, plan), encoding="utf-8")
+    (output_dir / "explanation.md").write_text(explain_plan(plan), encoding="utf-8")
+    (output_dir / "summary.txt").write_text(_render_bundle_summary(summary, plan), encoding="utf-8")
+
+
 def _has_critical_commands(plan: InstallPlan) -> bool:
     return any(
         step.command is not None and step.command.risk == CommandRisk.CRITICAL
@@ -138,6 +182,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Print a concise read-only health report for the diagnostic and generated plan.",
     )
     parser.add_argument(
+        "--bundle",
+        type=Path,
+        help="Write a complete read-only report bundle to the given directory.",
+    )
+    parser.add_argument(
         "--llm-provider",
         choices=["openai-compatible"],
         help="Optional LLM provider used only with --explain. Requires provider-specific env vars.",
@@ -160,18 +209,24 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    selected_modes = sum(bool(mode) for mode in (args.json, args.explain, args.doctor))
+    selected_modes = sum(bool(mode) for mode in (args.json, args.explain, args.doctor, args.bundle))
     if selected_modes > 1:
-        raise SystemExit("--json, --explain and --doctor are mutually exclusive")
+        raise SystemExit("--json, --explain, --doctor and --bundle are mutually exclusive")
 
     if args.llm_provider and not args.explain:
         raise SystemExit("--llm-provider requires --explain")
+
+    if args.bundle and args.output:
+        raise SystemExit("--bundle cannot be used with --output")
 
     report = _load_report(args.report)
     summary = summarize_hardware(report)
     plan = create_initial_plan(summary)
 
-    if args.json:
+    if args.bundle:
+        _write_bundle(args.bundle, report, summary, plan)
+        rendered = f"Bundle written to {args.bundle}\n"
+    elif args.json:
         rendered = plan.model_dump_json(indent=2) + "\n"
     elif args.explain:
         client = _build_llm_client(args.llm_provider)
@@ -184,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         rendered = _render_plan(plan)
 
-    _write_or_print(rendered, args.output)
+    _write_or_print(rendered, None if args.bundle else args.output)
 
     if args.fail_on_critical and _has_critical_commands(plan):
         return 3
