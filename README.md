@@ -4,6 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Safety](https://img.shields.io/badge/safety-human--in--the--loop-orange)
 ![LLM](https://img.shields.io/badge/LLM-optional-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 Safe, script-based Arch Linux installer focused on Btrfs layouts, UEFI handling, systemd-boot and a clean base system.
 
@@ -12,6 +13,8 @@ This repository is being evolved into an **AI Engineering portfolio project**: a
 See [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for the AI Engineering case study and portfolio summary.
 
 See [`docs/CV_SNIPPETS.md`](docs/CV_SNIPPETS.md) for CV, LinkedIn and interview-ready descriptions.
+
+See [`docs/REPO_TOPICS.md`](docs/REPO_TOPICS.md) for suggested GitHub topics and repository descriptions.
 
 ## Project metadata
 
@@ -23,6 +26,7 @@ See [`docs/CV_SNIPPETS.md`](docs/CV_SNIPPETS.md) for CV, LinkedIn and interview-
 | LLM usage | Optional explanation layer only |
 | CI | GitHub Actions + pytest |
 | Main risk boundary | Deterministic command classification before LLM output |
+| License | MIT |
 
 ## Current scripts
 
@@ -178,6 +182,10 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions that touch installer or 
 6. Add tests and CI.
 7. Add optional LLM planning behind the deterministic parser/classifier boundary.
 8. Add documentation explaining failure modes and rollback strategy.
+
+## License
+
+This project is licensed under the MIT License. See [`LICENSE`](LICENSE).
 
 ## Usage warning
 
