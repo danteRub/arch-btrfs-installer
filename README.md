@@ -39,21 +39,50 @@ This creates:
 diagnostics/system_report.json
 ```
 
-The report is designed to be consumed later by an AI advisor module, for example:
+Then generate a conservative installation plan:
 
-```text
-system_report.json -> hardware parser -> risk classifier -> installation plan -> human approval
+```bash
+python -m ai_advisor diagnostics/system_report.json
 ```
 
-## Planned AI Engineering modules
+JSON output is also available:
+
+```bash
+python -m ai_advisor diagnostics/system_report.json --json
+```
+
+The current pipeline is:
+
+```text
+system_report.json -> hardware parser -> deterministic planner -> risk classifier -> human approval
+```
+
+## Local development
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+pytest -q
+```
+
+Try the CLI with included fixtures:
+
+```bash
+python -m ai_advisor tests/fixtures/uefi_nvme_amd.json
+python -m ai_advisor tests/fixtures/uefi_windows_dualboot.json
+```
+
+## AI Engineering modules
 
 ```text
 ai_advisor/
   models.py          # Pydantic schemas
   hardware_parser.py # Parse diagnostics JSON
   risk_classifier.py # Classify generated commands
-  planner.py         # Generate installation plan
-  evals/             # Test scenarios and expected behavior
+  planner.py         # Generate deterministic install plans
+  __main__.py        # CLI entrypoint
 ```
 
 ## Roadmap
@@ -62,9 +91,10 @@ ai_advisor/
 2. Add sample fixtures for UEFI, BIOS, NVMe, SATA, AMD, Intel and dual-boot scenarios.
 3. Add Python schemas with Pydantic.
 4. Add command risk classifier.
-5. Add an AI advisor that generates plans, not commands to execute blindly.
+5. Add a deterministic advisor that generates plans, not commands to execute blindly.
 6. Add tests and CI.
-7. Add documentation explaining failure modes and rollback strategy.
+7. Add optional LLM planning behind the deterministic parser/classifier boundary.
+8. Add documentation explaining failure modes and rollback strategy.
 
 ## Usage warning
 
